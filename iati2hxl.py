@@ -1,4 +1,4 @@
-#!/usr/bin/python
+﻿#!/usr/bin/python
 """Convert XML-formatted IATI activity reports to CSV-formatted HXL 3W"""
 
 import csv, requests, sys, xml.sax
@@ -16,7 +16,7 @@ class IATI2HXL(xml.sax.handler.ContentHandler):
         ['Reporting org', '#org+name+reporting', 1],
         ['Participating org', '#org+name+participating', 3],
         ['Activity', '#activity+name', 1],
-        ['Sector code', '#sector+code+v_iati_sectors', 3],
+        ['DAC sector', '#sector+name', 3],
         ['Country code', '#country+code+recipient', 3],
         ['Planned start date', '#date+planned+start', 1],
         ['Actual start date', '#date+actual+start', 1],
@@ -25,7 +25,7 @@ class IATI2HXL(xml.sax.handler.ContentHandler):
     ]
     """Specification for what data should appear in the CSV"""
 
-    STATUS_TYPES = {
+    STATUS_CODES = {
         '1': 'Pipeline/Identification',
         '2': 'Implementation',
         '3': 'Completion',
@@ -34,6 +34,57 @@ class IATI2HXL(xml.sax.handler.ContentHandler):
         '6': 'Suspended'
     }
     """Lookup table for IATI status codes"""
+
+    DAC_SECTOR_CODES = {
+        "110": "Education",
+        "111": "Education, Level Unspecified",
+        "112": "Basic Education",
+        "113": "Secondary Education",
+        "114": "Post-Secondary Education",
+        "120": "Health",
+        "121": "Health, General",
+        "122": "Basic Health",
+        "130": "Population Policies/Programmes & Reproductive Health",
+        "140": "Water Supply & Sanitation",
+        "150": "Government & Civil Society",
+        "151": "Government & Civil Society-general",
+        "152": "Conflict, Peace & Security",
+        "160": "Other Social Infrastructure & Services",
+        "210": "Transport & Storage",
+        "220": "Communications",
+        "230": "Energy",
+        "231": "Energy Policy",
+        "232": "Energy generation, renewable sources",
+        "233": "Energy generation, non-renewable sources",
+        "234": "Hybrid energy plants",
+        "235": "Nuclear energy plants",
+        "236": "Energy distribution",
+        "240": "Banking & Financial Services",
+        "250": "Business & Other Services",
+        "310": "Agriculture, Forestry, Fishing",
+        "311": "Agriculture",
+        "312": "Forestry",
+        "313": "Fishing",
+        "320": "Industry, Mining, Construction",
+        "321": "Industry",
+        "322": "Mineral Resources & Mining",
+        "323": "Construction",
+        "331": "Trade Policies & Regulations",
+        "332": "Tourism",
+        "410": "General Environment Protection",
+        "430": "Other Multisector",
+        "510": "General Budget Support",
+        "520": "Developmental Food Aid/Food Security Assistance",
+        "530": "Other Commodity Assistance",
+        "600": "Action Relating to Debt",
+        "720": "Emergency Response",
+        "730": "Reconstruction Relief & Rehabilitation",
+        "740": "Disaster Prevention & Preparedness",
+        "910": "Administrative Costs of Donors",
+        "930": "Refugees in Donor Countries",
+        "998": "Unallocated / Unspecified"
+    }
+    """OECD DAC high-level sector codes"""
 
     def __init__ (self, output_stream=None):
         """Create a new SAX event handler for IATI->CSV conversion.
@@ -64,7 +115,11 @@ class IATI2HXL(xml.sax.handler.ContentHandler):
         elif name == 'recipient-country':
             self.add_prop('#country+code+recipient', atts.get('code'))
         elif name == 'sector':
-            self.add_prop('#sector+code+v_iati_sectors', atts.get('code'))
+            code = atts.get('code')
+            if code:
+                sector = self.DAC_SECTOR_CODES.get(code[:3])
+                self.add_prop('#sector+name', sector)
+                self.add_prop('#sector+code+v_iati_sectors', code)
         elif name == 'activity-date':
             date = atts.get('iso-date')
             type = atts.get('type')
@@ -77,8 +132,8 @@ class IATI2HXL(xml.sax.handler.ContentHandler):
             elif type == '4':
                 self.add_prop('#date+actual+end', date)
         elif name == 'activity-status':
-            if self.STATUS_TYPES.get(atts.get('code')):
-                self.add_prop('#status', self.STATUS_TYPES[atts['code']])
+            if self.STATUS_CODES.get(atts.get('code')):
+                self.add_prop('#status', self.STATUS_CODES[atts['code']])
             
         self.element_stack.append(name)
         self.content = ''
