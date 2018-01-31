@@ -1,6 +1,13 @@
+#!/usr/bin/python
+"""Convert XML-formatted IATI activity reports to CSV-formatted HXL 3W"""
+
 import csv, requests, sys, xml.sax
 
-class IATIHandler(xml.sax.handler.ContentHandler):
+if sys.version_info < (3,):
+    raise Exception("Python 3+ required")
+
+class IATI2HXL(xml.sax.handler.ContentHandler):
+    """SAX event handler to convert an IATI activity report to CSV-formatted HXL 3W"""
 
     OUTPUT_SPEC = [
         ['IATI id', '#activity+id+v_iati_activities', 1],
@@ -16,6 +23,7 @@ class IATIHandler(xml.sax.handler.ContentHandler):
         ['Planned end date', '#date+planned+end', 1],
         ['Actual end date', '#date+actual+end', 1],
     ]
+    """Specification for what data should appear in the CSV"""
 
     STATUS_TYPES = {
         '1': 'Pipeline/Identification',
@@ -25,16 +33,24 @@ class IATIHandler(xml.sax.handler.ContentHandler):
         '5': 'Cancelled',
         '6': 'Suspended'
     }
+    """Lookup table for IATI status codes"""
 
     def __init__ (self, output_stream=None):
-        xml.sax.handler.ContentHandler.__init__(self)
+        """Create a new SAX event handler for IATI->CSV conversion.
+        @param output_stream: if provided, use this as the CSV output stream (defaults to sys.stdout)
+        """
+        super().__init__()
+
         self.element_stack = []
         self.activity = {}
         self.content = ''
         self.csv_output = csv.writer(output_stream if output_stream else sys.stdout)
 
     def startElement(self, name, atts):
+        """Beginning of a nested XML element"""
+        super().startElement(name, atts)
 
+        # Trigger actions based on the element name
         if name == 'iati-activities':
             self.write_headers()
             self.write_hashtags()
@@ -68,10 +84,14 @@ class IATIHandler(xml.sax.handler.ContentHandler):
         self.content = ''
 
     def endElement(self, name):
+        """End of a nested XML element"""
+        super().endElement(name)
+        
         self.element_stack.pop()
 
+        # Trigger actions based on the element name
         if name == 'iati-activity':
-            self.write_row()
+            self.write_data()
         elif name == 'iati-identifier':
             self.add_prop('#activity+id+v_iati_activities', self.content)
         elif name == 'title':
@@ -83,20 +103,24 @@ class IATIHandler(xml.sax.handler.ContentHandler):
                 self.add_prop('#org+name+participating', self.content)
 
     def characters(self, content):
+        """Any chunk of character data (may not be complete)"""
+        super().characters(content)
+
+        # Add to the current text content (will be used by endElement)
         self.content += content
 
     def add_prop(self, hashtag, value):
+        """Add a property to the current row (supports multiple values)"""
         if not self.activity.get(hashtag):
             self.activity[hashtag] = []
         self.activity[hashtag].append(value)
 
     def has_parent(self, name):
+        """Check for a specific parent element"""
         return (self.element_stack[-1] == name)
 
-    def has_ancestor(self, name):
-        return (name in self.element_stack)
-
     def write_headers(self):
+        """Write the CSV header row"""
         row = []
         for spec in self.OUTPUT_SPEC:
             for i in range(0, spec[2]):
@@ -104,13 +128,15 @@ class IATIHandler(xml.sax.handler.ContentHandler):
         self.csv_output.writerow(row)
 
     def write_hashtags(self):
+        """Write the CSV hashtag row"""
         row = []
         for spec in self.OUTPUT_SPEC:
             for i in range(0, spec[2]):
                 row.append(spec[1])
         self.csv_output.writerow(row)
 
-    def write_row(self):
+    def write_data(self):
+        """Write the current activity as a CSV data row"""
         row = []
         for spec in self.OUTPUT_SPEC:
             values = self.activity.get(spec[1])
@@ -121,7 +147,12 @@ class IATIHandler(xml.sax.handler.ContentHandler):
                     row.append('')
         self.csv_output.writerow(row)
 
-for source in sys.argv[1:]:
-    handler = IATIHandler()
-    with requests.get(source, stream=True).raw as input:
-        xml.sax.parse(input, handler)
+
+# If run from the command line
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        raise Exception("Usage: {} URL ...".format(sys.argv[0]))
+    for source in sys.argv[1:]:
+        handler = IATI2HXL()
+        with requests.get(source, stream=True).raw as input:
+            xml.sax.parse(input, handler)
