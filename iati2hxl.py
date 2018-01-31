@@ -195,6 +195,9 @@ class IATI2HXL(xml.sax.handler.ContentHandler):
         row = []
         for spec in self.OUTPUT_SPEC:
             values = self.activity.get(spec[1])
+            # special kludge
+            if values and (spec[1] == '#sector+name'):
+                values = list(dict.fromkeys(values))
             for i in range(0, spec[2]):
                 if values and len(values) > i and values[i]:
                     row.append(values[i])
