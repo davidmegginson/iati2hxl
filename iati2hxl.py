@@ -187,7 +187,7 @@ class IATI2HXL(xml.sax.handler.ContentHandler):
         row = []
         for spec in self.OUTPUT_SPEC:
             for i in range(0, spec[2]):
-                row.append(spec[1])
+                row.append(spec[1].replace('+', ' +'))
         self.csv_output.writerow(row)
 
     def write_data(self):
