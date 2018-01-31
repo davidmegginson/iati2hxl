@@ -212,5 +212,6 @@ if __name__ == '__main__':
         raise Exception("Usage: {} URL ...".format(sys.argv[0]))
     for source in sys.argv[1:]:
         handler = IATI2HXL()
-        with requests.get(source, stream=True).raw as input:
-            xml.sax.parse(input, handler)
+        with requests.get(source, stream=True) as response:
+            response.raw.decode_content = True
+            xml.sax.parse(response.raw, handler)
