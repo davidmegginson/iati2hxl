@@ -40,7 +40,7 @@ class IATIHandler(xml.sax.handler.ContentHandler):
             self.write_hashtags()
         elif name == 'iati-activity':
             self.activity = {}
-            self.add_prop('#date+updated', atts.get('last-updated-datetime'))
+            self.add_prop('#date+updated', atts.get('last-updated-datetime')[:10])
         elif name == 'reporting-org':
             self.add_prop('#org+code+reporting', atts.get('ref'))
         elif name == 'participating-org':
@@ -122,7 +122,6 @@ class IATIHandler(xml.sax.handler.ContentHandler):
         self.csv_output.writerow(row)
 
 for source in sys.argv[1:]:
-    print(source, file=sys.stderr)
     handler = IATIHandler()
     with requests.get(source, stream=True).raw as input:
         xml.sax.parse(input, handler)
