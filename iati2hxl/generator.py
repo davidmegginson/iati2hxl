@@ -42,7 +42,7 @@ def make_headers():
     row = []
     for spec in OUTPUT_SPEC:
         for i in range(0, spec[2]):
-            row.append(spec[0])
+            row.append(spec[3])
     return row
 
 def make_hashtags():
@@ -52,7 +52,7 @@ def make_hashtags():
     row = []
     for spec in OUTPUT_SPEC:
         for i in range(0, spec[2]):
-            row.append(spec[1].replace('+', ' +'))
+            row.append(spec[4].replace('+', ' +'))
     return row
 
 def make_row(activity_element):
