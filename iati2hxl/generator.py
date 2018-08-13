@@ -109,7 +109,12 @@ if __name__ == '__main__':
     output = csv.writer(sys.stdout)
     
     for source in sys.argv[1:]:
-        with requests.get(source, stream=True) as response:
-            response.raw.decode_content = True
-            for row in genhxl(response.raw):
-                output.writerow(row)
+        try:
+            with requests.get(source, stream=True) as response:
+                response.raw.decode_content = True
+                for row in genhxl(response.raw):
+                    output.writerow(row)
+        except requests.exceptions.MissingSchema:
+            with open(source, 'r') as input:
+                for row in genhxl(input):
+                    output.writerow(row)
